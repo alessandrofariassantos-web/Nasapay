@@ -1,1 +1,32 @@
+# Python
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.venv
+venv/
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Build/Dist
+build/
+dist/
+*.spec
+*.exe
+*.zip
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# PyInstaller
+*.manifest
+*.pkg
