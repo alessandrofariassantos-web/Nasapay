@@ -1,0 +1,23 @@
+
+======================================================================
+Traceback (most recent call last):
+  File "C:\nasapay\main.py", line 676, in <module>
+    iniciar_janela()
+    ~~~~~~~~~~~~~~^^
+  File "C:\nasapay\main.py", line 336, in iniciar_janela
+    store.init_db()  # garante migrações multi-empresa
+    ~~~~~~~~~~~~~^^
+  File "C:\nasapay\utils\store.py", line 384, in init_db
+    c.execute("""
+    ^
+NameError: name 'c' is not defined
+
+======================================================================
+Traceback (most recent call last):
+  File "C:\nasapay\main.py", line 697, in <module>
+    iniciar_janela()
+    ~~~~~~~~~~~~~~^^
+  File "C:\nasapay\main.py", line 558, in iniciar_janela
+    m.add_command(label="Contas Bancárias", command=_abrir_contas)
+    ^
+NameError: name 'm' is not defined
