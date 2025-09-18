@@ -1,0 +1,79 @@
+﻿*** Begin Patch
+*** Update File: utils/cadastros/pastas.py
+@@
+-    _linha(0, "Pasta Importar Remessa", "pasta_importar_remessa")
+-    _linha(1, "Pasta Remessa Nasapay",  "pasta_remessa_nasapay")
+-    _linha(2, "Pasta Retorno Nasapay",  "pasta_retorno_nasapay")
+-    _linha(3, "Pasta Boletos",          "pasta_boletos")
++    # Rótulos novos, como solicitado:
++    _linha(0, "Pasta de Arquivos para Importar x Converter", "pasta_importar_remessa")
++    _linha(1, "Pasta para Salvar Remessa Nasapay",           "pasta_remessa_nasapay")
++    _linha(2, "Pasta para Salvar Retorno Nasapay",           "pasta_retorno_nasapay")
++    _linha(3, "Pasta para Salvar Boleto PDF Gerado",         "pasta_boletos")
+@@
+-def open_pastas_tab(container, add_tab):
++def open_pastas_tab(container, add_tab):
+@@
+-    v_in  = linha_pasta(0, "Pasta Importar Remessa", "pasta_importar_remessa")
+-    v_out = linha_pasta(1, "Pasta Remessa Nasapay",  "pasta_remessa_nasapay")
+-    v_ret = linha_pasta(2, "Pasta Retorno Nasapay",  "pasta_retorno_nasapay")
+-    v_bol = linha_pasta(3, "Pasta Boletos",          "pasta_boletos")
++    # Rótulos novos, iguais aos da área moderna:
++    v_in  = linha_pasta(0, "Pasta de Arquivos para Importar x Converter", "pasta_importar_remessa")
++    v_out = linha_pasta(1, "Pasta para Salvar Remessa Nasapay",           "pasta_remessa_nasapay")
++    v_ret = linha_pasta(2, "Pasta para Salvar Retorno Nasapay",           "pasta_retorno_nasapay")
++    v_bol = linha_pasta(3, "Pasta para Salvar Boleto PDF Gerado",         "pasta_boletos")
+@@
+-    def salvar():
+-        cfg["pasta_importar_remessa"] = v_in.get().strip()
+-        cfg["pasta_remessa_nasapay"]  = v_out.get().strip()
+-        cfg["pasta_retorno_nasapay"]  = v_ret.get().strip()
+-        cfg["pasta_boletos"]          = v_bol.get().strip()
+-        # espelho legado
+-        cfg["pasta_entrada"] = cfg["pasta_importar_remessa"]
+-        cfg["pasta_saida"]   = cfg["pasta_remessa_nasapay"]
+-        for pth in (cfg["pasta_importar_remessa"], cfg["pasta_remessa_nasapay"], cfg["pasta_retorno_nasapay"], cfg["pasta_boletos"]):
+-            _garante_pasta(pth)
+-    _salvar_config(cfg)
+-        messagebox.showinfo("Pastas", "Pastas salvas com sucesso.", parent=frame)
+-        
+-    # fecha a aba/janela após salvar
+-        if hasattr(frame, "_nasapay_close"):
+-            frame._nasapay_close(direct=True)
+-        else:
+-            try:
+-                frame.destroy()
+-            except Exception:
+-                pass
++    def salvar():
++        # Grava valores
++        cfg["pasta_importar_remessa"] = v_in.get().strip()
++        cfg["pasta_remessa_nasapay"]  = v_out.get().strip()
++        cfg["pasta_retorno_nasapay"]  = v_ret.get().strip()
++        cfg["pasta_boletos"]          = v_bol.get().strip()
++
++        # Espelho legado (mantém compatibilidade com código antigo)
++        cfg["pasta_entrada"] = cfg["pasta_importar_remessa"]
++        cfg["pasta_saida"]   = cfg["pasta_remessa_nasapay"]
++
++        # Garante que as pastas existem
++        for pth in (cfg["pasta_importar_remessa"], cfg["pasta_remessa_nasapay"], cfg["pasta_retorno_nasapay"], cfg["pasta_boletos"]):
++            _garante_pasta(pth)
++
++        # Salva config
++        _salvar_config(cfg)
++        messagebox.showinfo("Pastas", "Pastas salvas com sucesso.", parent=frame)
++
++        # Fecha a aba/janela após salvar
++        if hasattr(frame, "_nasapay_close"):
++            frame._nasapay_close(direct=True)
++        else:
++            try:
++                frame.destroy()
++            except Exception:
++                pass
+@@
+-    btns = ttk.Frame(frame); btns.grid(row=4, column=0, columnspan=3, sticky="e", padx=8, pady=10)
++    # Botões à ESQUERDA, logo abaixo do último campo (como você pediu)
++    btns = ttk.Frame(frame); btns.grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=10)
+*** End Patch
