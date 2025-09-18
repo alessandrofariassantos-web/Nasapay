@@ -1,4 +1,4 @@
-import json, os, tkinter as tk
+﻿import json, os, tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 # Mantém seu caminho atual (retrocompat)
@@ -34,13 +34,13 @@ ROTULOS = [
 ]
 
 def _aplicar_defaults_e_retrocompat(cfg: dict):
-    # Mantém os campos antigos funcionando
+    # Mantém compatibilidade com campos antigos
     cfg.setdefault("pasta_importar_remessa", cfg.get("pasta_entrada", ""))
     cfg.setdefault("pasta_remessa_nasapay",  cfg.get("pasta_saida",   ""))
     cfg.setdefault("pasta_retorno_nasapay",  cfg.get("pasta_retorno_nasapay", ""))
     cfg.setdefault("pasta_boletos",          cfg.get("pasta_boletos", "C:/nasapay/boletos"))
 
-    # Espelha legado sempre que possível
+    # Espelha legado
     cfg["pasta_entrada"] = cfg.get("pasta_importar_remessa", "")
     cfg["pasta_saida"]   = cfg.get("pasta_remessa_nasapay",  "")
 
@@ -57,9 +57,6 @@ def build_aba_pastas(parent, state):
 
     frm = ttk.Frame(parent)
     frm.columnconfigure(1, weight=1)
-
-    # Controle de mudança
-    _snapshot = {}
 
     def _espelhar_legado():
         cfg["pasta_entrada"] = state.var("pasta_importar_remessa").get()
@@ -85,71 +82,11 @@ def build_aba_pastas(parent, state):
         var.trace_add("write", _on_write)
         ttk.Button(frm, text="Selecionar…", command=escolher).grid(row=row, column=2, padx=8, pady=6)
 
-    # Monta as 4 linhas com rótulos novos
-    for i, (rotulo, chave) in enumerate(ROTULOS):
-        # Inicializa state.var com valor atual
-        if not hasattr(state, "_vars"):
-            state._vars = {}
-        if chave not in state._vars:
-            v = tk.StringVar(value=cfg.get(chave, ""))
-            state._vars[chave] = v
-        _linha(i, rotulo, chave)
-        _snapshot[chave] = state._vars[chave].get()
-
-    def houve_alteracao():
-        for _, chave in ROTULOS:
-            if state._vars[chave].get() != _snapshot[chave]:
-                return True
-        return False
-
-    def salvar():
-        for _, chave in ROTULOS:
-            cfg[chave] = state._vars[chave].get().strip()
-
-        # Espelho legado
-        cfg["pasta_entrada"] = cfg["pasta_importar_remessa"]
-        cfg["pasta_saida"]   = cfg["pasta_remessa_nasapay"]
-
-        # Garante que as pastas existem
-        for _, chave in ROTULOS:
-            _garante_pasta(cfg.get(chave, ""))
-
-        _salvar_config(cfg)
-        messagebox.showinfo("Pastas", "Pastas salvas com sucesso.")
-        # Fecha a aba/janela após salvar
-        if hasattr(frm, "_nasapay_close"):
-            frm._nasapay_close(direct=True)
-        else:
-            try:
-                frm.master.destroy()
-            except Exception:
-                try:
-                    frm.destroy()
-                except Exception:
-                    pass
-
-    def fechar():
-        if houve_alteracao():
-            if messagebox.askyesno("Confirmar", "Deseja salvar antes de fechar?"):
-                salvar()
-                return
-        # Apenas fecha
-        if hasattr(frm, "_nasapay_close"):
-            frm._nasapay_close(direct=True)
-        else:
-            try:
-                frm.master.destroy()
-            except Exception:
-                try:
-                    frm.destroy()
-                except Exception:
-                    pass
-
-    # Barra de botões (ESQUERDA, abaixo dos campos)
-    btns = ttk.Frame(frm)
-    btns.grid(row=len(ROTULOS), column=0, columnspan=3, sticky="w", padx=8, pady=10)
-    ttk.Button(btns, text="Salvar", command=salvar).grid(row=0, column=0, padx=6)
-    ttk.Button(btns, text="Fechar", command=fechar).grid(row=0, column=1, padx=6)
+    # Rótulos novos
+    _linha(0, "Pasta de Arquivos para Importar x Converter", "pasta_importar_remessa")
+    _linha(1, "Pasta para Salvar Remessa Nasapay",           "pasta_remessa_nasapay")
+    _linha(2, "Pasta para Salvar Retorno Nasapay",           "pasta_retorno_nasapay")
+    _linha(3, "Pasta para Salvar Boleto PDF Gerado",         "pasta_boletos")
 
     return frm
 
@@ -186,7 +123,7 @@ def open_pastas_tab(container, add_tab):
 
     # 4 linhas com rótulos NOVOS
     v_in  = linha_pasta(0, "Pasta de Arquivos para Importar x Converter", "pasta_importar_remessa")
-    v_out = linha_pasta(1, "Pasta para Salvar Remessa Nasapay",          "pasta_remessa_nasapay")
+    v_out = linha_pasta(1, "Pasta para Salvar Remessa Nasapay",           "pasta_remessa_nasapay")
     v_ret = linha_pasta(2, "Pasta para Salvar Retorno Nasapay",           "pasta_retorno_nasapay")
     v_bol = linha_pasta(3, "Pasta para Salvar Boleto PDF Gerado",         "pasta_boletos")
 
@@ -199,15 +136,17 @@ def open_pastas_tab(container, add_tab):
         ])
 
     def salvar():
+        # Grava valores
         cfg["pasta_importar_remessa"] = v_in.get().strip()
         cfg["pasta_remessa_nasapay"]  = v_out.get().strip()
         cfg["pasta_retorno_nasapay"]  = v_ret.get().strip()
         cfg["pasta_boletos"]          = v_bol.get().strip()
 
-        # Espelho legado
+        # Espelho legado (mantém compatibilidade com código antigo)
         cfg["pasta_entrada"] = cfg["pasta_importar_remessa"]
         cfg["pasta_saida"]   = cfg["pasta_remessa_nasapay"]
 
+        # Garante que as pastas existem
         for pth in (
             cfg["pasta_importar_remessa"],
             cfg["pasta_remessa_nasapay"],
@@ -216,6 +155,7 @@ def open_pastas_tab(container, add_tab):
         ):
             _garante_pasta(pth)
 
+        # Salva config
         _salvar_config(cfg)
         messagebox.showinfo("Pastas", "Pastas salvas com sucesso.", parent=frame)
 
@@ -239,6 +179,7 @@ def open_pastas_tab(container, add_tab):
             pass
 
     # Botões à ESQUERDA, logo abaixo do último campo
-    btns = ttk.Frame(frame); btns.grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=10)
+    btns = ttk.Frame(frame)
+    btns.grid(row=4, column=0, columnspan=3, sticky="w", padx=8, pady=10)
     ttk.Button(btns, text="Salvar", command=salvar).grid(row=0, column=0, padx=6)
     ttk.Button(btns, text="Fechar", command=fechar).grid(row=0, column=1, padx=6)
