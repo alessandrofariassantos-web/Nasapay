@@ -96,14 +96,6 @@ def _open_editor(parent: tk.Misc, eid: int, on_saved, sid: int | None = None):
 
     win = tk.Toplevel(parent)
     win.title("Editar Sacador/Avalista" if sid else "Novo Sacador/Avalista")
-    
-    # Aplicar ícone Nasapay
-    try:
-        from utils.popup_confirmacao import _aplicar_icone_nasapay
-        _aplicar_icone_nasapay(win)
-    except Exception:
-        pass
-    
     win.transient(parent)
     win.grab_set()
 
@@ -157,14 +149,6 @@ def open_sacador_avalista(parent=None, container: ttk.Notebook | None = None):
     if container is None:
         win = tk.Toplevel(parent)
         win.title("Sacador/Avalista")
-        
-        # Aplicar ícone Nasapay
-        try:
-            from utils.popup_confirmacao import _aplicar_icone_nasapay
-            _aplicar_icone_nasapay(win)
-        except Exception:
-            pass
-        
         nb = ttk.Notebook(win)
         nb.pack(fill="both", expand=True, padx=8, pady=8)
     else:

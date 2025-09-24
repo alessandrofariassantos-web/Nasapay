@@ -1,4 +1,19 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+"""
+Aplica a correção manualmente, criando um novo arquivo parametros.py
+com a função corrigida que mapeia as chaves corretamente.
+"""
+
+import sys
+import os
+import shutil
+
+def criar_parametros_corrigido():
+    """Cria uma versão completamente nova do arquivo parametros.py."""
+    
+    codigo_completo = '''# -*- coding: utf-8 -*-
 """
 Módulo de parâmetros corrigido com mapeamento adequado de chaves.
 """
@@ -156,9 +171,9 @@ def carregar_parametros() -> Dict[str, str]:
     # Última tentativa: valores padrão baseados nos dados encontrados
     return {
         'pastas': {
-            'pasta_importar_remessa': 'C:\\nasapay',
-            'pasta_salvar_remessa_nasapay': 'C:\\nasapay\\remessas',
-            'pasta_salvar_boletos': 'C:\\nasapay\\boletos'
+            'pasta_importar_remessa': 'C:\\\\nasapay',
+            'pasta_salvar_remessa_nasapay': 'C:\\\\nasapay\\\\remessas',
+            'pasta_salvar_boletos': 'C:\\\\nasapay\\\\boletos'
         }
     }
 
@@ -227,83 +242,49 @@ def salvar_parametros(parametros: dict):
             con.close()
     except:
         return False
+'''
+    
+    return codigo_completo
 
-
-def abrir_parametros(parent=None, secao=None, container=None):
-    """Abre a interface de parâmetros/configurações."""
+def main():
+    print("Aplicação Manual da Correção - Nasapay")
+    print("=" * 50)
+    
     try:
-        # Tentar importar a interface de parâmetros baseada na seção
-        if secao == "pastas":
-            try:
-                from utils.cadastros.pastas_nova import open_pastas_tab
-                if container:
-                    open_pastas_tab(container=container, add_tab=container.add)
-                else:
-                    open_pastas_tab()
-                return
-            except ImportError:
-                pass
+        # Verificar se o arquivo existe
+        parametros_path = "utils/parametros.py"
         
-        # Mapear seções para módulos específicos
-        modulo_map = {
-            "empresa": "empresa",
-            "conta_nasapay": "conta_nasapay", 
-            "conta_email": "conta_email",
-            "cobranca": "cobranca",
-            "sequenciais": "sequenciais",
-            "contas_bancarias": "contas_bancarias"
-        }
+        if not os.path.exists(parametros_path):
+            print(f"❌ Arquivo não encontrado: {parametros_path}")
+            return
         
-        if secao and secao in modulo_map:
-            try:
-                modulo_nome = modulo_map[secao]
-                modulo = __import__(f"utils.cadastros.{modulo_nome}", fromlist=[modulo_nome])
-                
-                # Tentar diferentes nomes de função
-                for func_name in [f"open_{modulo_nome}", f"abrir_{modulo_nome}", "main", "open_window"]:
-                    if hasattr(modulo, func_name):
-                        func = getattr(modulo, func_name)
-                        if container:
-                            func(parent=parent, container=container)
-                        else:
-                            func(parent=parent)
-                        return
-                        
-            except ImportError as e:
-                print(f"Erro ao importar {secao}: {e}")
+        # Criar backup
+        backup_path = "utils/parametros_original.py"
+        shutil.copy2(parametros_path, backup_path)
+        print(f"✓ Backup criado: {backup_path}")
         
-        # Fallback geral
-        try:
-            from utils.cadastros.parametros_ui import ParametrosUI
-            ParametrosUI(parent)
-        except ImportError:
-            try:
-                from cadastros.parametros_ui import ParametrosUI
-                ParametrosUI(parent)
-            except ImportError:
-                # Fallback para interface simples
-                import tkinter as tk
-                from tkinter import messagebox
-                messagebox.showinfo("Parâmetros", f"Interface de parâmetros '{secao or 'geral'}' não disponível", parent=parent)
-                
+        # Criar nova versão
+        codigo_corrigido = criar_parametros_corrigido()
+        
+        with open(parametros_path, 'w', encoding='utf-8') as f:
+            f.write(codigo_corrigido)
+        
+        print(f"✓ Arquivo corrigido criado: {parametros_path}")
+        
+        print("\n✅ CORREÇÃO APLICADA COM SUCESSO!")
+        print("\n📋 TESTE AGORA:")
+        print("1. Execute: python teste_funcoes.py")
+        print("2. Deve mostrar as pastas mapeadas")
+        print("3. Teste os conversores na aplicação")
+        print("\n🎯 Os conversores devem funcionar perfeitamente!")
+        print(f"\n💾 Se houver problemas, restaure o backup: {backup_path}")
+        
     except Exception as e:
-        import tkinter as tk
-        from tkinter import messagebox
-        messagebox.showerror("Erro", f"Falha ao abrir parâmetros: {e}", parent=parent)
+        print(f"❌ Erro ao aplicar correção: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    input("\nPressione Enter para sair...")
 
-def obter_parametro(chave, padrao=""):
-    """Obtém um parâmetro específico."""
-    try:
-        parametros = carregar_parametros()
-        return parametros.get(chave, padrao)
-    except:
-        return padrao
-
-def definir_parametro(chave, valor):
-    """Define um parâmetro específico."""
-    try:
-        parametros = carregar_parametros()
-        parametros[chave] = valor
-        return salvar_parametros(parametros)
-    except:
-        return False
+if __name__ == "__main__":
+    main()

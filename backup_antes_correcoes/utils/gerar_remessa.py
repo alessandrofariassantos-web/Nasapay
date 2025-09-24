@@ -3,7 +3,6 @@ import os, re, zipfile, unicodedata
 from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk
 
 from utils.popup_confirmacao import popup_confirmacao_titulos
 from utils.parametros import carregar_parametros, salvar_parametros
@@ -117,119 +116,15 @@ def _juros_dia_centavos(valor_brl: str, juros_pct_str: str) -> int:
 def _proximo_sequencial(cfg: dict) -> int:
     """Lê cfg['ultima_remessa'] (7 dígitos), soma 1 e retorna int."""
     try:
-        # Tentar diferentes locais onde pode estar o sequencial
+        atual = int(_dig(cfg.get("ultima_remessa", "0")) or "0")
+    except Exception:
         atual = 0
-        
-        # Primeiro: estrutura aninhada sequenciais.ultima_remessa
-        if "sequenciais" in cfg and isinstance(cfg["sequenciais"], dict):
-            seq_dict = cfg["sequenciais"]
-            if "ultima_remessa" in seq_dict:
-                atual = int(_dig(str(seq_dict["ultima_remessa"])) or "0")
-            elif "remessa" in seq_dict:
-                atual = int(seq_dict.get("remessa", 0))
-        
-        # Segundo: chave direta ultima_remessa
-        elif "ultima_remessa" in cfg:
-            atual = int(_dig(str(cfg.get("ultima_remessa", "0"))) or "0")
-        
-        # Terceiro: chave remessa (como int)
-        elif "remessa" in cfg:
-            atual = int(cfg.get("remessa", 0))
-        
-        # Quarto: tentar ler do config.json
-        elif atual == 0:
-            try:
-                import json
-                import os
-                config_path = "config.json"
-                if os.path.exists(config_path):
-                    with open(config_path, 'r', encoding='utf-8') as f:
-                        config_data = json.load(f)
-                    
-                    # Tentar diferentes chaves no config.json
-                    if "sequenciais" in config_data and isinstance(config_data["sequenciais"], dict):
-                        seq_dict = config_data["sequenciais"]
-                        if "ultima_remessa" in seq_dict:
-                            atual = int(seq_dict["ultima_remessa"])
-                        elif "remessa" in seq_dict:
-                            atual = int(seq_dict["remessa"])
-                    elif "ultima_remessa" in config_data:
-                        atual = int(_dig(str(config_data["ultima_remessa"])) or "0")
-                    elif "sequencial_remessa" in config_data:
-                        atual = int(_dig(str(config_data["sequencial_remessa"])) or "0")
-            except Exception as e:
-                print(f"Erro ao ler config.json: {e}")
-        
-        # Quinto: usar gerar_nosso_numero do parametros.py
-        if atual == 0:
-            try:
-                from utils.parametros import gerar_nosso_numero
-                return int(_dig(gerar_nosso_numero(cfg)) or "1")
-            except:
-                pass
-            
-    except Exception as e:
-        print(f"Erro em _proximo_sequencial: {e}")
-        atual = 0
-    
     return max(0, atual) + 1
 
 def _persistir_sequencial(cfg: dict, seq: int):
     """Salva o novo sequencial (7 dígitos) em cfg['ultima_remessa'] e persiste o config."""
-    try:
-        # Salvar em múltiplos locais para compatibilidade
-        cfg["ultima_remessa"] = str(seq).zfill(7)
-        cfg["remessa"] = seq
-        
-        # Também salvar na estrutura aninhada se existir
-        if "sequenciais" not in cfg:
-            cfg["sequenciais"] = {}
-        cfg["sequenciais"]["ultima_remessa"] = seq
-        cfg["sequenciais"]["remessa"] = seq
-        
-        # Salvar no config.json também
-        try:
-            import json
-            import os
-            config_path = "config.json"
-            
-            config_data = {}
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config_data = json.load(f)
-            
-            # Atualizar sequenciais no config.json
-            config_data["ultima_remessa"] = str(seq).zfill(6)
-            config_data["sequencial_remessa"] = str(seq).zfill(6)
-            
-            if "sequenciais" not in config_data:
-                config_data["sequenciais"] = {}
-            config_data["sequenciais"]["ultima_remessa"] = seq
-            config_data["sequenciais"]["remessa"] = seq
-            
-            # Salvar config.json atualizado
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=2, ensure_ascii=False)
-                
-        except Exception as e:
-            print(f"Erro ao salvar config.json: {e}")
-        
-        # Usar a função gerar_nosso_numero para atualizar no banco
-        try:
-            from utils.parametros import gerar_nosso_numero, definir_parametro
-            gerar_nosso_numero(cfg)  # Isso atualiza o sequencial no banco
-            definir_parametro("ultima_remessa", str(seq).zfill(7))
-            definir_parametro("remessa", seq)
-        except Exception as e:
-            print(f"Erro ao atualizar banco: {e}")
-        
-        salvar_parametros(cfg)
-        
-    except Exception as e:
-        print(f"Erro ao persistir sequencial: {e}")
-        # Fallback: salvar pelo menos localmente
-        cfg["ultima_remessa"] = str(seq).zfill(7)
-        cfg["remessa"] = seq
+    cfg["ultima_remessa"] = str(seq).zfill(7)
+    salvar_parametros(cfg)
 
 def _codigo_arquivo_remessa(seq: int, data: datetime) -> str:
     """CB + DDMM + SEQ(7) — ex.: CB12080000001"""
@@ -439,13 +334,6 @@ def montar_trailer_bmp(qtde_registros: int) -> str:
 def _popup_remessa_gerada(arquivos_rem: list[str], parent=None, pasta_saida: str = ""):
     top = tk.Toplevel(parent) if parent else tk.Toplevel()
     top.title("Remessa Gerada")
-    
-    # Aplicar ícone Nasapay usando função utilitária
-    try:
-        from utils.popup_confirmacao import _aplicar_icone_nasapay
-        _aplicar_icone_nasapay(top)
-    except Exception as e:
-        print(f"[gerar_remessa] Erro ao carregar ícone: {e}")
     try:
         if parent is not None:
             top.transient(parent)
@@ -513,7 +401,7 @@ def gerar_remessa_e_zip(titulos: list[dict], parametros: dict, parent=None):
     seq = _proximo_sequencial(cfg)
     codigo_cb = _codigo_arquivo_remessa(seq, hoje)
 
-    pasta_saida = cfg.get("pastas", {}).get("pasta_salvar_remessa_nasapay", os.path.join(os.path.expanduser("~"), "nasapay", "remessas"))
+    pasta_saida = parametros.get("pasta_saida") or r"C:/nasapay/remessas"
     os.makedirs(pasta_saida, exist_ok=True)
     nome_base   = f"{codigo_cb}"
     path_rem    = os.path.join(pasta_saida, f"{nome_base}.REM")
@@ -552,16 +440,15 @@ def gerar_remessa_e_zip(titulos: list[dict], parametros: dict, parent=None):
     except Exception:
         pass
 
-    # Confirmação de Títulos (com TOTAL e QTD Total)
-    # Este popup deve vir primeiro
-    if popup_confirmacao_titulos(titulos, parent=parent):
-        # Popup “Remessa Gerada” (novo estilo) - agora exibido APÓS a confirmação
-        try:
-            _popup_remessa_gerada([path_rem], parent=parent, pasta_saida=pasta_saida)
-        except Exception as e:
-            print("[ui] falha ao exibir popup da remessa:", e)
+    # Popup novo
+    try:
+        _popup_remessa_gerada([path_rem], parent=parent, pasta_saida=pasta_saida)
+    except Exception as e:
+        print("[ui] falha ao exibir popup da remessa:", e)
 
+    try:
+        popup_confirmacao_titulos(titulos, parent=parent)
+    except Exception:
+        pass
 
-
-
-
+    return path_rem

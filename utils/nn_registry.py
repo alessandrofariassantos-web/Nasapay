@@ -116,8 +116,20 @@ def buscar_nosso_numero(titulo: dict) -> Optional[str]:
     k = _key_from_titulo(titulo)
     latest_dt = None
     nn = None
+    
+    # Debug: mostrar chave procurada
+    print(f"[DEBUG] Buscando NN para chave: {k}")
+    
     for r in _load_rows():
         rk = (_doc_norm(r["documento"]), r["vencimento"], r["valor_centavos"], _dig(r["doc_pagador"]))
+        
+        # Debug: mostrar comparação
+        if r["documento"] and _doc_norm(r["documento"]) == k[0]:
+            print(f"[DEBUG] Comparando:")
+            print(f"  Procurado: {k}")
+            print(f"  Registro:  {rk}")
+            print(f"  Match: {rk == k}")
+        
         if rk == k and r.get("nosso_numero"):
             try:
                 dt = datetime.fromisoformat((r.get("criado_em") or "").replace(" ", "T"))
@@ -126,6 +138,11 @@ def buscar_nosso_numero(titulo: dict) -> Optional[str]:
             if latest_dt is None or (dt and dt > latest_dt):
                 latest_dt = dt
                 nn = r["nosso_numero"]
+                print(f"[DEBUG] NN encontrado: {nn}")
+    
+    if not nn:
+        print(f"[DEBUG] Nenhum NN encontrado para {k}")
+    
     return nn
 
 def registrar_titulos(titulos: List[dict], params: dict, meta: dict | None = None):

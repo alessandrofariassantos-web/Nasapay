@@ -216,26 +216,13 @@ def _candidate_pdf_dirs(cfg, page):
     base = []
     if getattr(page, "_last_pdf_dir", None):
         base.append(page._last_pdf_dir)
-    
-    # Usar caminhos das configurações de pastas padrão
-    pastas = cfg.get("pastas", {})
     for k in ("pasta_saida", "pasta_entrada"):
         p = (cfg.get(k) or "").strip()
         if p and os.path.isdir(p):
             base.append(p)
-    
-    # Adicionar pastas configuradas
-    for pasta_key in ("pasta_salvar_boletos", "pasta_importar_remessa", "pasta_salvar_remessa_nasapay"):
-        p = pastas.get(pasta_key, "").strip()
-        if p and os.path.isdir(p):
+    for p in (r"C:\nasapay\boletos", r"C:\nasapay\arquivos", r"C:\nasapay\remessas", r"C:\nasapay"):
+        if os.path.isdir(p):
             base.append(p)
-    
-    # Fallback para caminhos padrão apenas se não houver configurações
-    if not base:
-        for p in (r"C:\nasapay\boletos", r"C:\nasapay\arquivos", r"C:\nasapay\remessas", r"C:\nasapay"):
-            if os.path.isdir(p):
-                base.append(p)
-    
     seen = set()
     out = []
     for p in base:

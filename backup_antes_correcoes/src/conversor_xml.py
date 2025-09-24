@@ -4,9 +4,16 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from tkinter import filedialog, messagebox
 
-def converter_arquivo_xml(parametros: dict):
-    """Converte arquivos XML de notas fiscais para títulos BMP."""
-    caminho_entrada = parametros.get("pastas", {}).get("pasta_importar_remessa", os.path.expanduser("~"))
+from utils.parametros import carregar_parametros, gerar_nosso_numero
+from utils.gerar_remessa import gerar_remessa_e_zip
+
+def converter_arquivo_xml():
+    parametros = carregar_parametros() or {}
+    caminho_entrada = (
+        parametros.get("pasta_importar_remessa")
+        or parametros.get("pasta_entrada")
+        or os.path.expanduser("~")
+    )
 
     arquivos = filedialog.askopenfilenames(
         initialdir=caminho_entrada,
@@ -45,23 +52,15 @@ def converter_arquivo_xml(parametros: dict):
             endereco_str = f"{xLgr}, {nro} - {xBai}".strip().strip(", -")
 
             for dup in duplicatas:
-                parcela_raw = dup.findtext("nfe:nDup", default="", namespaces=ns) or ""
+                parcela = dup.findtext("nfe:nDup", default="", namespaces=ns) or ""
                 venc_raw = dup.findtext("nfe:dVenc", default="", namespaces=ns) or ""
-                valor_raw = dup.findtext("nfe:vDup", default="", namespaces=ns) or ""
-
-                if not venc_raw or not valor_raw:
-                    continue
-
                 vencimento = datetime.strptime(venc_raw, "%Y-%m-%d").strftime("%d/%m/%Y")
-                valor = valor_raw.replace(".", ",")
+                valor = dup.findtext("nfe:vDup", default="0,00", namespaces=ns) or "0,00"
 
-                parcela = parcela_raw.split("/")[-1] if "/" in parcela_raw else ""
-                
-                from utils.parametros import gerar_nosso_numero
                 nosso_numero = gerar_nosso_numero(parametros)
 
                 dig = "".join(ch for ch in doc_sacado if ch.isdigit())
-                tipo = "01" if len(dig) == 11 else "02"
+                tipo = "02" if len(dig) == 14 else "01"
 
                 titulos.append({
                     "sacado": sacado_nome,
@@ -83,40 +82,4 @@ def converter_arquivo_xml(parametros: dict):
         messagebox.showinfo("Aviso", "Nenhum título válido encontrado nos arquivos selecionados.")
         return
 
-    from utils.gerar_remessa import gerar_remessa_e_zip
     gerar_remessa_e_zip(titulos, parametros)
-
-# Função de interface para o menu principal
-def open_conversor_xml(parent=None, container=None):
-    """Interface para abrir o conversor XML a partir do menu principal."""
-    print("[DEBUG] open_conversor_xml chamada!")
-    
-    try:
-        # Forçar reload dos módulos para garantir que estamos usando a versão mais recente
-        import importlib
-        import sys
-        
-        # Recarregar módulo de parâmetros
-        if 'utils.parametros' in sys.modules:
-            importlib.reload(sys.modules['utils.parametros'])
-        
-        from utils.parametros import carregar_parametros
-        parametros = carregar_parametros()
-        
-        print(f"[DEBUG] Parâmetros carregados: {type(parametros)}")
-        print(f"[DEBUG] Pastas: {parametros.get('pastas', {})}")
-        
-        # Chamar a função de conversão
-        converter_arquivo_xml(parametros)
-        
-    except Exception as e:
-        import traceback
-        error_msg = f"Falha ao executar conversor XML: {e}\n\nDetalhes:\n{traceback.format_exc()}"
-        print(f"[ERROR] {error_msg}")
-        messagebox.showerror("Erro", error_msg, parent=parent)
-
-# Garantir que a função está disponível no módulo
-__all__ = ['converter_arquivo_xml', 'open_conversor_xml']
-
-# Debug: mostrar que o módulo foi carregado
-print(f"[DEBUG] Módulo conversor_xml carregado. Funções disponíveis: {__all__}")

@@ -411,7 +411,13 @@ def iniciar_janela():
             tries -= 1
             try:
                 from utils import parametros as _p
-                _p.abrir_parametros(parent=root, secao=secao, container=tabs)
+                if secao == "pastas":
+                    import utils.cadastros.pastas_nova as pastas_nova
+                    importlib.reload(pastas_nova)
+                    pastas_nova.open_pastas_tab(container=tabs, add_tab=tabs.add)
+                else:
+                    _p.abrir_parametros(parent=root, secao=secao, container=tabs)
+
                 _sync_logo()
                 return
             except Exception as e:
@@ -422,6 +428,7 @@ def iniciar_janela():
                     continue
                 break
         messagebox.showerror("Cadastro", f"Falha ao abrir cadastros:\n{last}", parent=root)
+
 
     def fechar_todas():
         for tid in tabs.tabs():
@@ -462,46 +469,36 @@ def iniciar_janela():
         def _conv_xml():
             try:
                 from src.conversor_xml import converter_arquivo_xml
-                converter_arquivo_xml()
+                from utils.parametros import carregar_parametros
+                parametros = carregar_parametros()
+                converter_arquivo_xml(parametros)
             except Exception as e:
                 messagebox.showerror("Importar XML", f"Falha: {e}", parent=root)
 
         def _conv_brad():
             try:
                 from src.conversor_bradesco import converter_arquivo_bradesco
-                converter_arquivo_bradesco()
+                from utils.parametros import carregar_parametros
+                parametros = carregar_parametros()
+                converter_arquivo_bradesco(parametros)
             except Exception as e:
                 messagebox.showerror("Importar CNAB 400 Bradesco", f"Falha: {e}", parent=root)
 
         def _conv_bb240():
             try:
                 from src.conversor_bb240 import converter_arquivo_bb240
-                converter_arquivo_bb240()
+                from utils.parametros import carregar_parametros
+                parametros = carregar_parametros()
+                converter_arquivo_bb240(parametros)
             except Exception as e:
                 messagebox.showerror("Importar CNAB 240 BB", f"Falha: {e}", parent=root)
 
         def _validar():
-            # tenta utils.validador_remessa e fallback simples
             try:
-                from utils.validador_remessa import validar_arquivo_remessa
-            except Exception:
-                try:
-                    from validador_remessa import validar_arquivo_remessa
-                except Exception as e:
-                    messagebox.showerror("Validador de Remessa", f"Falha ao carregar validador:\n{e}", parent=root)
-                    return
-
-            arq = filedialog.askopenfilename(
-                parent=root,
-                title="Selecione a remessa para validar",
-                filetypes=[("Remessas BMP", "*.BMP;*.bmp"), ("Todos os arquivos","*.*")]
-            )
-            if not arq:
-                return
-            try:
-                validar_arquivo_remessa(arq, parent=root)
+                from utils.validador_remessa import open_validador_remessa
+                open_validador_remessa(parent=root)
             except Exception as e:
-                messagebox.showerror("Validador de Remessa", f"Falha ao validar:\n{e}", parent=root)
+                messagebox.showerror("Validador de Remessa", f"Falha ao abrir validador:\n{e}", parent=root)
 
         m.add_command(label="Conversor XML",               command=_conv_xml)
         m.add_command(label="Conversor Bradesco CNAB 400", command=_conv_brad)

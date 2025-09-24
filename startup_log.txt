@@ -21,3 +21,16 @@ Traceback (most recent call last):
     m.add_command(label="Contas Bancárias", command=_abrir_contas)
     ^
 NameError: name 'm' is not defined
+
+======================================================================
+Traceback (most recent call last):
+  File "c:\nasapay\main.py", line 579, in <module>
+    iniciar_janela()
+    ~~~~~~~~~~~~~~^^
+  File "c:\nasapay\main.py", line 576, in iniciar_janela
+    root.mainloop()
+    ~~~~~~~~~~~~~^^
+  File "C:\Users\alessandro\AppData\Local\Programs\Python\Python313\Lib\tkinter\__init__.py", line 1599, in mainloop
+    self.tk.mainloop(n)
+    ~~~~~~~~~~~~~~~~^^^
+KeyboardInterrupt

@@ -1,6 +1,6 @@
 # === utils/validador_remessa.py ===
 import os, re
-from utils.boletos_bmp import dv_nosso_numero_base7
+from tkinter import filedialog, messagebox
 
 def _slice(line: str, i: int, j: int) -> str:
     """1-based inclusive [i..j]."""
@@ -17,9 +17,9 @@ def validar_remessa_bmp(path_rem: str) -> None:
     """
     Validações locais:
     - tamanho 400 colunas
-    - HEADER literal 'COBRANCA'
+    - HEADER literal \'COBRANCA\'
     - número da remessa (111–117) == sequencial do nome (últimos 7 dígitos) e >= 6
-    - MULTA: se código (66) == '0' então percentual (67–70) == '0000'
+    - MULTA: se código (66) == \'0\' então percentual (67–70) == \'0000\'
     - DOC pagador: tipo (219–220) coerente com dígitos (221–234)
     - NOSSO NÚMERO: 71–81 (11 dígitos) e 82 = DV módulo 11 base 7 com a carteira
       (carteira obtida do identificador da empresa: pos 022–024; usamos apenas os 2 últimos dígitos)
@@ -34,7 +34,7 @@ def validar_remessa_bmp(path_rem: str) -> None:
     seq_nome = int(m.group(1))
 
     with open(path_rem, "r", encoding="latin-1") as f:
-        linhas = [ln.rstrip("\r\n") for ln in f]
+        linhas = [ln.rstrip("\\r\\n") for ln in f]
 
     if not linhas or linhas[0][0] != "0":
         raise ValueError("Header inválido.")
@@ -44,7 +44,7 @@ def validar_remessa_bmp(path_rem: str) -> None:
     _must_len(h, 400, "Header")
     literal = _slice(h, 12, 26)
     if literal != "COBRANCA".ljust(15):
-        raise ValueError("Header: pos 12–26 deve ser 'COBRANCA'.")
+        raise ValueError("Header: pos 12–26 deve ser \'COBRANCA\'.")
     nr_header = int(_slice(h, 111, 117))
     if nr_header != seq_nome:
         raise ValueError(f"Header: pos 111–117 ({nr_header}) deve bater com o sequencial do nome.")
@@ -59,30 +59,32 @@ def validar_remessa_bmp(path_rem: str) -> None:
         cod_multa = _slice(det, 66, 66)
         perc_multa = _slice(det, 67, 70)
         if cod_multa == "0" and perc_multa != "0000":
-            raise ValueError(f"Linha {i}: código de multa isento (66='0') e percentual não zerado (67–70='{perc_multa}').")
+            raise ValueError(f"Linha {i}: código de multa isento (66=\'0\') e percentual não zerado (67–70=\\'{perc_multa}\\'.)")
 
         # NOSSO NÚMERO + DV (71–82)
         nn = _slice(det, 71, 81)
         dv = _slice(det, 82, 82)
         if not nn.isdigit() or len(nn) != 11:
-            raise ValueError(f"Linha {i}: Nosso Número (71–81) deve ter 11 dígitos. Valor: '{nn}'.")
+            raise ValueError(f"Linha {i}: Nosso Número (71–81) deve ter 11 dígitos. Valor: \'{nn}\'.")
         # carteira fica no identificador da empresa (021–037) => 022–024
         cart3 = _slice(det, 22, 24)
         cart2 = cart3[-2:]
+        
+        from utils.boletos_bmp import dv_nosso_numero_base7
         dv_ok = dv_nosso_numero_base7(cart2, nn)
         if dv != dv_ok:
-            raise ValueError(f"Linha {i}: DV do Nosso Número inválido em 82. Esperado '{dv_ok}', recebido '{dv}'.")
+            raise ValueError(f"Linha {i}: DV do Nosso Número inválido em 82. Esperado \'{dv_ok}\' , recebido \'{dv}\'.")
 
         # DOC PAGADOR
         tipo = _slice(det, 219, 220)
         doc  = _slice(det, 221, 234)
         d = _dig(doc)
         if not d.isdigit() or len(d) not in (11, 14):
-            raise ValueError(f"Linha {i}: número inscrição pagador inválido (221–234='{doc}').")
+            raise ValueError(f"Linha {i}: número inscrição pagador inválido (221–234=\\'{doc}\\'.)")
         if tipo == "01" and len(d) not in (11, 14):
-            raise ValueError(f"Linha {i}: tipo inscrição '01' (CPF) inconsistente com documento '{doc}'.")
+            raise ValueError(f"Linha {i}: tipo inscrição \'01\' (CPF) inconsistente com documento \'{doc}\'.")
         if tipo == "02" and len(d) != 14:
-            raise ValueError(f"Linha {i}: tipo inscrição '02' (CNPJ) requer 14 dígitos no documento '{doc}'.")
+            raise ValueError(f"Linha {i}: tipo inscrição \'02\' (CNPJ) requer 14 dígitos no documento \'{doc}\'.")
 
     # TRAILER
     t = linhas[-1]
@@ -93,7 +95,81 @@ def validar_remessa_bmp(path_rem: str) -> None:
 # --- wrapper simples p/ integrar com o menu ---
 def validar_arquivo_remessa(path_rem: str, parent=None) -> None:
     """
-    Wrapper para manter compatibilidade com quem chama 'validar_arquivo_remessa'.
+    Wrapper para manter compatibilidade com quem chama \'validar_arquivo_remessa\'.
     Levanta exceção se houver erro; não exibe messagebox aqui.
     """
+    from utils.parametros import carregar_parametros
+    cfg = carregar_parametros()
+    pasta_salvar_remessa = cfg.get("pastas", {}).get("pasta_salvar_remessa_nasapay", os.path.expanduser("~"))
+    if not path_rem.startswith(pasta_salvar_remessa):
+        raise ValueError(f"O arquivo de remessa deve estar na pasta padrão de salvamento: {pasta_salvar_remessa}")
     validar_remessa_bmp(path_rem)
+
+# Função de interface para o menu principal
+def open_validador_remessa(parent=None, container=None):
+    """Interface para abrir o validador de remessa a partir do menu principal."""
+    print("[DEBUG] open_validador_remessa chamada!")
+    
+    try:
+        # Forçar reload dos módulos para garantir que estamos usando a versão mais recente
+        import importlib
+        import sys
+        
+        # Recarregar módulo de parâmetros
+        if 'utils.parametros' in sys.modules:
+            importlib.reload(sys.modules['utils.parametros'])
+        
+        from utils.parametros import carregar_parametros
+        
+        # Carregar configurações para obter a pasta correta
+        cfg = carregar_parametros()
+        pasta_remessas = cfg.get("pastas", {}).get("pasta_salvar_remessa_nasapay", os.path.expanduser("~"))
+        
+        print(f"[DEBUG] Configurações carregadas: {type(cfg)}")
+        print(f"[DEBUG] Pasta remessas: {pasta_remessas}")
+        
+        # Garantir que a pasta existe
+        if not os.path.exists(pasta_remessas):
+            os.makedirs(pasta_remessas, exist_ok=True)
+            print(f"[DEBUG] Pasta criada: {pasta_remessas}")
+        
+        # Abrir diálogo de seleção na pasta correta
+        arquivo = filedialog.askopenfilename(
+            title="Selecione a remessa para validar",
+            initialdir=pasta_remessas,
+            filetypes=[("Remessas BMP", "*.REM *.rem"), ("Todos os arquivos", "*.*")],
+            parent=parent
+        )
+        
+        if not arquivo:
+            print("[DEBUG] Nenhum arquivo selecionado")
+            return
+        
+        print(f"[DEBUG] Arquivo selecionado: {arquivo}")
+        
+        # Validar o arquivo selecionado
+        try:
+            validar_remessa_bmp(arquivo)
+            messagebox.showinfo(
+                "Validação Concluída", 
+                f"Arquivo validado com sucesso!\\n\\nArquivo: {os.path.basename(arquivo)}", 
+                parent=parent
+            )
+        except Exception as e:
+            messagebox.showerror(
+                "Erro de Validação", 
+                f"Erro ao validar o arquivo:\\n\\n{str(e)}", 
+                parent=parent
+            )
+            
+    except Exception as e:
+        import traceback
+        error_msg = f"Falha ao abrir validador de remessa: {e}\\n\\nDetalhes:\\n{traceback.format_exc()}"
+        print(f"[ERROR] {error_msg}")
+        messagebox.showerror("Erro", error_msg, parent=parent)
+
+# Garantir que as funções estão disponíveis no módulo
+__all__ = ['validar_remessa_bmp', 'validar_arquivo_remessa', 'open_validador_remessa']
+
+# Debug: mostrar que o módulo foi carregado
+print(f"[DEBUG] Módulo validador_remessa carregado. Funções disponíveis: {__all__}")

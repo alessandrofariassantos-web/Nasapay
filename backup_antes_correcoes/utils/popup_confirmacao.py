@@ -1,36 +1,7 @@
 # utils/popup_confirmacao.py
-import os, re
+import re
 import tkinter as tk
 from tkinter import ttk
-from PIL import ImageTk, Image
-
-# ---------- função utilitária para ícones ----------
-def _aplicar_icone_nasapay(top: tk.Toplevel):
-    """Aplica o ícone Nasapay à janela de forma padronizada."""
-    try:
-        # Determinar o diretório base do projeto
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        
-        # Tentar carregar ícone .ico primeiro
-        icon_path = os.path.join(base_dir, "nasapay.ico")
-        if os.path.exists(icon_path):
-            top.iconbitmap(icon_path)
-            return True
-        
-        # Fallback para PNG se .ico não estiver disponível
-        icon_path_png = os.path.join(base_dir, "logo_nasapay.png")
-        if os.path.exists(icon_path_png):
-            icon_image = Image.open(icon_path_png)
-            # Redimensionar para tamanho de ícone se necessário
-            icon_image = icon_image.resize((32, 32), Image.Resampling.LANCZOS)
-            icon_photo = ImageTk.PhotoImage(icon_image)
-            top.iconphoto(False, icon_photo)
-            return True
-            
-    except Exception as e:
-        print(f"[popup] Erro ao carregar ícone Nasapay: {e}")
-    
-    return False
 
 # ---------- helpers de valor ----------
 def _parse_brl(v) -> float:
@@ -61,36 +32,22 @@ def _fmt_brl(x: float) -> str:
 def _center_on_parent(top: tk.Toplevel, parent):
     try:
         top.update_idletasks()
-        if parent is None: 
-            parent = top.winfo_toplevel()
+        if parent is None: parent = top.winfo_toplevel()
         px = parent.winfo_rootx(); py = parent.winfo_rooty()
         pw = parent.winfo_width(); ph = parent.winfo_height()
         tw = top.winfo_width(); th = top.winfo_height()
         x = px + (pw - tw)//2; y = py + (ph - th)//2
         top.geometry(f"+{max(0,x)}+{max(0,y)}")
-        
-        # Garantir comportamento modal correto
-        if parent is not None:
-            top.transient(parent)
-        top.grab_set()
-        top.lift()
-        top.focus_force()
-        
-        # Garantir que a janela fique no topo temporariamente
-        top.attributes("-topmost", True)
-        top.after(200, lambda: top.attributes("-topmost", False))
+        top.transient(parent); top.grab_set(); top.focus_force()
     except Exception:
-        try: 
-            top.grab_set()
-        except Exception: 
-            pass
+        try: top.grab_set()
+        except Exception: pass
 
 # ---------- popup ----------
-def popup_confirmacao_titulos(titulos: list[dict], parent=None) -> bool:
+def popup_confirmacao_titulos(titulos: list[dict], parent=None):
     """
     Mostra uma listagem dos títulos gerados com TOTAL em R$ e QTD de títulos.
     Colunas na ordem: #, Sacado, Documento, Vencimento, Valor (R$).
-    Retorna True se o usuário clicou em OK, False caso contrário.
     """
     total = 0.0
     for t in titulos or []:
@@ -98,10 +55,6 @@ def popup_confirmacao_titulos(titulos: list[dict], parent=None) -> bool:
 
     top = tk.Toplevel(parent)
     top.title("Confirmação dos Títulos Gerados")
-    
-    # Aplicar ícone Nasapay
-    _aplicar_icone_nasapay(top)
-
     top.minsize(720, 380)
 
     # layout base
@@ -160,11 +113,6 @@ def popup_confirmacao_titulos(titulos: list[dict], parent=None) -> bool:
     actions = ttk.Frame(top)
     actions.grid(row=2, column=0, sticky="e", padx=10, pady=(0, 10))
 
-    result = {"ok": False}
-    def _ok_clicked():
-        result["ok"] = True
-        fechar()
-
     def fechar():
         try:
             top.grab_release()
@@ -172,15 +120,10 @@ def popup_confirmacao_titulos(titulos: list[dict], parent=None) -> bool:
             pass
         top.destroy()
 
-    ttk.Button(actions, text="OK", command=_ok_clicked).pack(side="right")
+    ttk.Button(actions, text="OK", command=fechar).pack(side="right")
 
     # centraliza e ativa
     _center_on_parent(top, parent)
 
     # atalho ESC para fechar
     top.bind("<Escape>", lambda e: fechar())
-
-    top.wait_window()
-    return result["ok"]
-
-

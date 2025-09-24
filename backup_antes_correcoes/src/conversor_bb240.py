@@ -3,6 +3,9 @@ import os
 from datetime import datetime
 from tkinter import filedialog, messagebox
 
+from utils.parametros import carregar_parametros, gerar_nosso_numero
+from utils.gerar_remessa import gerar_remessa_e_zip
+
 def _dig(s: str) -> str:
     return "".join(ch for ch in (s or "") if ch.isdigit())
 
@@ -97,15 +100,18 @@ def _parse_cnab240_bb(caminho: str, parametros: dict) -> list[dict]:
         if m:
             base["documento"] = m.group(1)
 
-        from utils.parametros import gerar_nosso_numero
         base["nosso_numero"] = gerar_nosso_numero(parametros)
         titulos.append(base)
 
     return titulos
 
-def converter_arquivo_bb240(parametros: dict):
-    """Converte arquivos CNAB240 BB para títulos BMP."""
-    caminho_entrada = parametros.get("pastas", {}).get("pasta_importar_remessa", os.path.expanduser("~"))
+def converter_arquivo_bb240():
+    p = carregar_parametros() or {}
+    caminho_entrada = (
+        p.get("pasta_importar_remessa")
+        or p.get("pasta_entrada")
+        or os.path.expanduser("~")
+    )
 
     arquivo = filedialog.askopenfilename(
         initialdir=caminho_entrada,
@@ -115,8 +121,7 @@ def converter_arquivo_bb240(parametros: dict):
         return
 
     try:
-        titulos = _parse_cnab240_bb(arquivo, parametros)
-
+        titulos = _parse_cnab240_bb(arquivo, p)
     except Exception as e:
         messagebox.showerror("Erro", f"Falha ao ler CNAB240: {e}")
         return
@@ -125,22 +130,4 @@ def converter_arquivo_bb240(parametros: dict):
         messagebox.showinfo("Aviso", "Nenhum título encontrado no arquivo selecionado.")
         return
 
-    from utils.gerar_remessa import gerar_remessa_e_zip
-    gerar_remessa_e_zip(titulos, parametros)
-
-def open_conversor_bb240(parent=None, container=None):
-    """Interface para abrir o conversor BB CNAB240 a partir do menu principal."""
-    try:
-        from utils.parametros import carregar_parametros
-        parametros = carregar_parametros()
-        
-        # Debug: verificar se os parâmetros foram carregados
-        print(f"[DEBUG] Parâmetros carregados: {type(parametros)}")
-        print(f"[DEBUG] Pastas: {parametros.get('pastas', {})}")
-        
-        converter_arquivo_bb240(parametros)
-    except Exception as e:
-        import traceback
-        error_msg = f"Falha ao executar conversor BB CNAB240: {e}\n\nDetalhes:\n{traceback.format_exc()}"
-        print(f"[ERROR] {error_msg}")
-        messagebox.showerror("Erro", error_msg, parent=parent)
+    gerar_remessa_e_zip(titulos, p)

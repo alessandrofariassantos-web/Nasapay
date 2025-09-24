@@ -1,7 +1,9 @@
 # src/conversor_bradesco.py
-import os
 from datetime import datetime
 from tkinter import filedialog, messagebox
+
+from utils.parametros import carregar_parametros, gerar_nosso_numero
+from utils.gerar_remessa import gerar_remessa_e_zip
 
 def _digits(s: str) -> str:
     return "".join(ch for ch in (s or "") if ch.isdigit())
@@ -14,9 +16,14 @@ def _normalize_tipo_insc(raw: str) -> str:
         return "02"
     return "02"
 
-def converter_arquivo_bradesco(parametros: dict):
-    """Converte arquivos CNAB400 Bradesco para títulos BMP."""
-    caminho_entrada = parametros.get("pastas", {}).get("pasta_importar_remessa", os.path.expanduser("~"))
+def converter_arquivo_bradesco():
+    parametros = carregar_parametros() or {}
+
+    caminho_entrada = (
+        parametros.get("pasta_importar_remessa")
+        or parametros.get("pasta_entrada")
+        or ""
+    )
 
     arquivo = filedialog.askopenfilename(
         initialdir=caminho_entrada,
@@ -61,7 +68,6 @@ def converter_arquivo_bradesco(parametros: dict):
                     else:
                         sacado_doc = doc_nums[-14:].rjust(14, "0")
 
-                    from utils.parametros import gerar_nosso_numero
                     nosso_numero = gerar_nosso_numero(parametros)
 
                     titulos.append({
@@ -87,22 +93,4 @@ def converter_arquivo_bradesco(parametros: dict):
         messagebox.showinfo("Aviso", "Nenhum título encontrado no arquivo selecionado.")
         return
 
-    from utils.gerar_remessa import gerar_remessa_e_zip
     gerar_remessa_e_zip(titulos, parametros)
-
-def open_conversor_bradesco(parent=None, container=None):
-    """Interface para abrir o conversor Bradesco a partir do menu principal."""
-    try:
-        from utils.parametros import carregar_parametros
-        parametros = carregar_parametros()
-        
-        # Debug: verificar se os parâmetros foram carregados
-        print(f"[DEBUG] Parâmetros carregados: {type(parametros)}")
-        print(f"[DEBUG] Pastas: {parametros.get('pastas', {})}")
-        
-        converter_arquivo_bradesco(parametros)
-    except Exception as e:
-        import traceback
-        error_msg = f"Falha ao executar conversor Bradesco: {e}\n\nDetalhes:\n{traceback.format_exc()}"
-        print(f"[ERROR] {error_msg}")
-        messagebox.showerror("Erro", error_msg, parent=parent)
